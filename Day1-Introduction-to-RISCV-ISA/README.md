@@ -7,7 +7,7 @@
 2. [Types of RISC-V Instructions](#2-types-of-risc-v-instructions)
 3. [Lab - Compilation and Simulation](#3-lab---compilation-and-simulation)
 4. [Debugging RISC-V Program Using Spike](#4-debugging-risc-v-program-using-spike)
-5. [Signed and Unsigned Integer Representation](#5-signed-and-unsigned-integer-representation)
+5. [Understanding Signed and Unsigned Integer Representation](#5-Understanding-signed-and-unsigned-integer-representation)
 6. [Learning Outcomes](#6-learning-outcomes)
 
 ---
