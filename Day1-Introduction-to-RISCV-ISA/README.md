@@ -6,7 +6,9 @@
 1. [Introduction to RISC-V Instruction Set](#1-introduction-to-risc-v-instruction-set)
 2. [Types of RISC-V Instructions](#2-types-of-risc-v-instructions)
 3. [Lab - Compilation and Simulation](#3-lab---compilation-and-simulation)
-4. [Learning Outcomes](#4-learning-outcomes)
+4. [Debugging RISC-V Program Using Spike](#4-debugging-risc-v-program-using-spike)
+5. [Signed and Unsigned Integer Representation](#5-signed-and-unsigned-integer-representation)
+6. [Learning Outcomes](#6-learning-outcomes)
 
 ---
 
@@ -315,7 +317,312 @@ The output can be compared with the result obtained from native GCC execution to
 
 ---
 
-# 4. Learning Outcomes
+## 4. Debugging RISC-V Instructions Using Spike
+
+After successfully running the C program using Spike, we used the Spike interactive debugger to understand how RISC-V instructions execute internally and how register values change after every instruction.
+
+### 4.1 Starting the Spike Debugger
+
+**Command:**
+
+```bash
+spike -d pk sum1ton.o
+```
+
+**Explanation:**
+
+* `spike` – RISC-V ISA simulator.
+* `-d` – Enables interactive debugging mode.
+* `pk` – Proxy kernel used to execute the application.
+* `sum1ton.o` – Compiled RISC-V executable.
+
+After executing this command, the terminal enters the Spike debugging environment, represented by the `(spike)` prompt.
+
+**Spike debugger initialization and register inspection**
+
+![Spike Debugger](images/spike_debugger.png)
+
+### 4.2 Understanding Program Counter and Registers
+
+The following commands were used inside the Spike debugger:
+
+```text
+until pc 0 100b0
+```
+
+This command executes the program until the Program Counter (PC) reaches address `0x100b0` on core 0.
+
+This address represents the initial execution location of the `main()` function in our program.
+
+To inspect a register:
+
+```text
+reg 0 a2
+```
+
+This displays the contents of register `a2` on core 0.
+
+Initially, the register contains:
+
+```text
+0x0000000000000000
+```
+
+This indicates that the register is initially zero.
+
+### 4.3 Understanding LUI Instruction
+
+Pressing Enter in the Spike debugger executes the next instruction.
+
+The instruction executed was:
+
+```text
+lui a2, 0x1
+```
+
+**LUI – Load Upper Immediate**
+
+LUI loads an immediate value into the upper 20 bits of a register and fills the lower 12 bits with zeros.
+
+Therefore:
+
+```text
+lui a2, 0x1
+```
+
+Produces:
+
+```text
+a2 = 0x0000000000001000
+```
+
+Here, bit 12 is set to 1, while the lower 12 bits remain zero.
+
+The next instruction was:
+
+```text
+lui a0, 0x21
+```
+
+This updates register `a0` with:
+
+```text
+a0 = 0x0000000000021000
+```
+
+This helped us understand how immediate values are loaded into registers during instruction execution.
+
+### 4.4 Understanding ADDI Instruction and Stack Pointer
+
+Next, we inspected the Stack Pointer (SP) register.
+
+```text
+reg 0 sp
+```
+
+The initial value observed was:
+
+```text
+0x0000003ffffffb50
+```
+
+The next instruction executed was:
+
+```text
+addi sp, sp, -16
+```
+
+**ADDI – Add Immediate**
+
+ADDI adds a signed immediate value to the contents of a source register and stores the result in the destination register.
+
+Instruction breakdown:
+
+| Field     | Value | Description          |
+| --------- | ----- | -------------------- |
+| Opcode    | ADDI  | Add immediate        |
+| rd        | sp    | Destination register |
+| rs1       | sp    | Source register      |
+| Immediate | -16   | Value to be added    |
+
+Calculation:
+
+```text
+Initial SP = 0x3ffffffb50
+Immediate  = -16 (decimal)
+            = -0x10
+
+Final SP   = 0x3ffffffb40
+```
+
+We verified the updated value using:
+
+```text
+reg 0 sp
+```
+
+The output showed:
+
+```text
+0x0000003ffffffb40
+```
+
+This confirms that the stack pointer was successfully decremented by 16 bytes.
+
+**Stack pointer inspection and ADDI execution**
+
+![Stack Pointer Debugging](images/spike_stack_pointer.png)
+
+---
+
+## 5. Understanding Signed and Unsigned Numbers in C
+
+In this experiment, we explored how signed and unsigned integer data types represent values and how their ranges differ.
+
+### 5.1 Understanding Unsigned Numbers
+
+An unsigned integer stores only non-negative values.
+
+For an N-bit unsigned number, the range is:
+
+$$
+0 \text{ to } 2^N-1
+$$
+
+For example, with 3 bits:
+
+| Binary | Decimal |
+| ------ | ------: |
+| 000    |       0 |
+| 001    |       1 |
+| 010    |       2 |
+| 011    |       3 |
+| 100    |       4 |
+| 101    |       5 |
+| 110    |       6 |
+| 111    |       7 |
+
+Therefore, the maximum value is:
+
+$$
+2^3-1=7
+$$
+
+Similarly, for a 64-bit unsigned integer:
+
+$$
+2^{64}-1
+$$
+
+The maximum value is:
+
+```text
+18446744073709551615
+```
+
+We used the `unsigned long long int` data type to experiment with this range.
+
+**Finding the maximum unsigned 64-bit integer**
+
+![Unsigned 64-bit](images/unsigned_64bit.png)
+
+### 5.2 Understanding the 64-bit Limitation
+
+We also experimented by changing the power from 64 to 115.
+
+However, the `unsigned long long int` data type supports only 64 bits on our 64-bit platform.
+
+Therefore, it cannot represent values beyond its maximum range. Values outside this range can overflow or produce unexpected results.
+
+**Testing values beyond the 64-bit unsigned range**
+
+![Unsigned Overflow](images/unsigned_overflow.png)
+
+### 5.3 Comparing Signed and Unsigned Representation
+
+We next compared the representation of the same magnitude using signed and unsigned integer data types.
+
+For a 24-bit magnitude:
+
+$$
+2^{24}-1=16777215
+$$
+
+**Unsigned representation:**
+
+```c
+printf("%llu", value);
+```
+
+Output:
+
+```text
+16777215
+```
+
+**Signed representation:**
+
+```c
+printf("%lld", value);
+```
+
+When the corresponding negative value is stored in a signed variable, the output becomes:
+
+```text
+-16777215
+```
+
+| Representation | Data type              |    Output |
+| -------------- | ---------------------- | --------: |
+| Unsigned       | unsigned long long int |  16777215 |
+| Signed         | long long int          | -16777215 |
+
+The difference is that unsigned integers represent only non-negative values, whereas signed integers can represent both positive and negative values.
+
+**Unsigned integer representation**
+
+![Unsigned 24-bit](images/unsigned_24bit.png)
+
+**Signed integer representation**
+
+![Signed 24-bit](images/signed_24bit.png)
+
+### 5.4 Finding Maximum and Minimum Signed Values
+
+We also explored the maximum and minimum values of signed integer representations.
+
+For a signed N-bit two's-complement integer:
+
+$$
+\text{Maximum}=2^{N-1}-1
+$$
+
+$$
+\text{Minimum}=-2^{N-1}
+$$
+
+For a 64-bit signed integer:
+
+| Parameter | Formula      |                Value |
+| --------- | ------------ | -------------------: |
+| Maximum   | \(2^{63}-1\) |  2147483647          |
+| Minimum   | \(-2^{63}\)  | -2147483647          |
+
+
+### 5.5 C Data Types, Memory and Format Specifiers
+
+We studied the following commonly used integer data types:
+
+| Data type              | Memory (bytes) | Format specifier |
+| ---------------------- | -------------: | ---------------- |
+| unsigned int           |              4 | `%u`             |
+| int                    |              4 | `%d`             |
+| unsigned long long int |              8 | `%llu`           |
+| long long int          |              8 | `%lld`           |
+
+---
+
+# 6. Learning Outcomes
 
 Through Day 1 of the RISC-V workshop, I learned:
 
