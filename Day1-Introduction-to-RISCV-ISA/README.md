@@ -589,24 +589,67 @@ The difference is that unsigned integers represent only non-negative values, whe
 
 ### 5.4 Finding Maximum and Minimum Signed Values
 
-We also explored the maximum and minimum values of signed integer representations.
+We explored the maximum and minimum values of signed integers using a C program compiled with the RISC-V GCC compiler and executed using Spike.
 
-For a signed N-bit two's-complement integer:
+For an N-bit signed integer using two's complement representation:
 
-$$
-\text{Maximum}=2^{N-1}-1
-$$
+**Maximum value:**
 
 $$
-\text{Minimum}=-2^{N-1}
+2^{N-1}-1
 $$
 
-For a 64-bit signed integer:
+**Minimum value:**
 
-| Parameter | Formula      |                Value |
+$$
+-2^{N-1}
+$$
+
+For a 64-bit signed integer, the theoretical limits are:
+
+| Parameter | Formula      |  Actual 64-bit value |
 | --------- | ------------ | -------------------: |
-| Maximum   | \(2^{63}-1\) |  2147483647          |
-| Minimum   | \(-2^{63}\)  | -2147483647          |
+| Maximum   | \(2^{63}-1\) |  9223372036854775807 |
+| Minimum   | \(-2^{63}\)  | -9223372036854775808 |
+
+**C Program:**
+
+```c
+int main() {
+    long long int max = (int)(pow(2,63) - 1);
+    long long int min = (int)(pow(2,63) * -1);
+
+    printf("Highest number is %lld\n", max);
+    printf("Lowest number is %lld\n", min);
+
+    return 0;
+}
+```
+
+**Compilation and execution:**
+
+```bash
+riscv64-unknown-elf-gcc -Ofast -mabi=lp64 -march=rv64i -o signedhighest.o signedhighest.c
+
+spike pk signedhighest.o
+```
+
+**Observation:**
+
+![Signed Maximum and Minimum Output](images/signed_max_min_output.png)
+
+Although the variables are declared as `long long int` (64-bit), the calculated values are explicitly typecast to `int` (32-bit).
+
+The observed output is:
+
+| Parameter      |      Output |
+| -------------- | ----------: |
+| Highest number |  2147483647 |
+| Lowest number  | -2147483648 |
+
+This demonstrates why the data type used during typecasting matters. The `(int)` conversion is outside the representable range of a 32-bit signed integer, so the result is not guaranteed by C and may vary between implementations.
+
+**Important learning:** Declaring a variable as `long long int` does not automatically make an earlier calculation or type conversion 64-bit. The intermediate expression and its data types also matter.
 
 
 ### 5.5 C Data Types, Memory and Format Specifiers
